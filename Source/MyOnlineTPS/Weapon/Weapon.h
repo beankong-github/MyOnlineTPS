@@ -36,18 +36,29 @@ private:
 public:
 	AWeapon();
 	virtual void Tick(float DeltaTime) override;
+	void ShowPickupWidget(bool bShowWidget);
 
 protected:
 	virtual void BeginPlay() override;
 
-	// 구체가 무엇인가와 Overlap될 때 호출된다.
 	UFUNCTION()
-		virtual void OnSphereOverlap(UPrimitiveComponent* OverlappedComponent
+	virtual void OnSphereOverlap(
+			UPrimitiveComponent* OverlappedComponent
 			, AActor* OtherActor
 			, UPrimitiveComponent* OtherPrimitiveComponent
 			, int32					OtherBodyIndex
 			, bool					bFromSweep
 			, const FHitResult& SweepResult);
+
+	UFUNCTION()
+		virtual void OnSphereEndOverlap
+		(
+			UPrimitiveComponent* OverlappedComponent
+			, AActor* OtherActor
+			, UPrimitiveComponent* OtherPrimitiveComponent
+			, int32					OtherBodyIndex
+		);
+
 
 private:
 

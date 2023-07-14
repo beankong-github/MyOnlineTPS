@@ -36,30 +36,48 @@ void AWeapon::BeginPlay()
 		PickupWidget->SetVisibility(false);
 	}
 
-	// 로컬 롤에서 권한이 있는지 확인해서 권한이 있다면 충돌 검사
-	// 즉, 서버 버전 액터라면 충돌검사
-	if (HasAuthority()) // (GetLocalRole() == ENetRole::ROLE_Authority)
+	// 서버 버전일 경우 실행
+	if (HasAuthority()) // => (GetLocalRole() == ENetRole::ROLE_Authority)
 	{
 		AreaSphere->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		AreaSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
-		AreaSphere->OnComponentBeginOverlap.AddDynamic(this, &AWeapon::OnSphereOverlap); // Overlap될 때 호출될 콜백함수 등록
+		AreaSphere->OnComponentBeginOverlap.AddDynamic(this, &AWeapon::OnSphereOverlap); // Overlap 시작 콜백함수 등록
+		AreaSphere->OnComponentEndOverlap.AddDynamic(this, &AWeapon::OnSphereEndOverlap);// Overlap 종료 콜백함수 등록
 	}
 	
-}
-
-void AWeapon::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherPrimitiveComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	AMyCharacter* MyCharacter = Cast<AMyCharacter>(OtherActor);
-	if (MyCharacter && PickupWidget)
-	{
-		PickupWidget->SetVisibility(true);
-	}
-
 }
 
 void AWeapon::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+}
+
+void AWeapon::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherPrimitiveComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	AMyCharacter* MyCharacter = Cast<AMyCharacter>(OtherActor);
+	if (MyCharacter)
+	{
+		MyCharacter->SetOverlappingWeapon(this);
+	}
+
+}
+
+void AWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherPrimitiveComponent, int32 OtherBodyIndex)
+{
+	AMyCharacter* MyCharacter = Cast<AMyCharacter>(OtherActor);
+	if (MyCharacter)
+	{
+		MyCharacter->SetOverlappingWeapon(nullptr);
+	}
+}
+
+
+void AWeapon::ShowPickupWidget(bool bShowWidget)
+{
+	if (PickupWidget)
+	{
+		PickupWidget->SetVisibility(bShowWidget);
+	}
 }
 

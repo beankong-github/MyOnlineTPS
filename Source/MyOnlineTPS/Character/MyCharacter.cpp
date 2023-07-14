@@ -1,5 +1,6 @@
 #include "MyCharacter.h"
 #include "Camera/CameraComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "Components/InputComponent.h"
 #include "Components/WidgetComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -7,7 +8,8 @@
 #include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "Net/UnrealNetwork.h"
+
+#include "MyOnlineTPS/Weapon/Weapon.h"
 
 AMyCharacter::AMyCharacter()
 {
@@ -36,7 +38,10 @@ void AMyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(AMyCharacter, OverlappingWeapon);
+	// Register variables to be replicated
+	// 모든 클라이언트에게 복제 : DOREPLIFETIME(AMyCharacter, OverlappingWeapon);
+	// 폰을 제어하는 클라이언트에만 복제 : 
+	DOREPLIFETIME_CONDITION(AMyCharacter, OverlappingWeapon, COND_OwnerOnly);
 }
 
 // Called when the game starts or when spawned
@@ -53,6 +58,12 @@ void AMyCharacter::BeginPlay()
 		}
 	}
 	
+}
+
+// Called every frame
+void AMyCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
 }
 
 void AMyCharacter::Move(const FInputActionValue& Value)
@@ -91,13 +102,6 @@ void AMyCharacter::Look(const FInputActionValue& Value)
 	}
 }
 
-// Called every frame
-void AMyCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-}
-
 // Called to bind functionality to input
 void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -116,4 +120,41 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
 	}
 }
+ 
 
+// AWeapon::OnSphereOverlap에서 호출.(서버에서 호출됨)
+void AMyCharacter::SetOverlappingWeapon(AWeapon* Weapon)
+{
+	// Host 클라이언트 무기 위젯 끄기
+	if (IsLocallyControlled())
+	{
+		if(OverlappingWeapon)
+			OverlappingWeapon->ShowPickupWidget(false);
+	}
+
+	// OverlappingWeapon 설정
+	OverlappingWeapon = Weapon;
+
+	// Host 클라이언트 무기 위젯 표시
+	if (IsLocallyControlled())
+	{
+		if (OverlappingWeapon)
+			OverlappingWeapon->ShowPickupWidget(true);
+	}
+}
+
+// OverlappingWeapon이 리플리케이트 될 때 호출 (Owner 클라이언트에서 호출)
+void AMyCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
+{
+	// Owner 클라이언트 무기 위젯 끄기
+	if (LastWeapon)
+	{
+		LastWeapon->ShowPickupWidget(false);
+	}
+
+	// Owner 클라이언트 무기 위젯 표시
+	if (OverlappingWeapon)
+	{
+		OverlappingWeapon->ShowPickupWidget(true);
+	}
+}
