@@ -1,6 +1,6 @@
 #include "MyCharacter.h"
-#include "Camera/CameraComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/WidgetComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -10,6 +10,7 @@
 #include "EnhancedInputSubsystems.h"
 
 #include "MyOnlineTPS/Weapon/Weapon.h"
+#include "MyOnlineTPS/Components/CombatComponent.h"
 
 AMyCharacter::AMyCharacter()
 {
@@ -21,7 +22,6 @@ AMyCharacter::AMyCharacter()
 	CameraBoom->TargetArmLength = 600.f;		// 카메라 붐 길이
 	CameraBoom->bUsePawnControlRotation = true; // 마우스에 따라 카메라 붐 회전
 
-	
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
@@ -32,40 +32,24 @@ AMyCharacter::AMyCharacter()
 	// Set Overhead Widget
 	OverheadWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("OverheadWidget"));
 	OverheadWidget->SetupAttachment(RootComponent);
+
+	// Set Combat
+	Combat = CreateDefaultSubobject<UCombatComponent>(TEXT("Combat Component"));
+	Combat->SetIsReplicated(true); // 컴포넌트는 따로 등록할 필요없이 이렇게 함수만 호출해도 리플리케이트 등록이 된다.
 }
 
 void AMyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	// Register variables to be replicated
-	// 모든 클라이언트에게 복제 : DOREPLIFETIME(AMyCharacter, OverlappingWeapon);
-	// 폰을 제어하는 클라이언트에만 복제 : 
+	// [ Register variables to be replicated ]
+	// - 모든 클라에게 복제 : DOREPLIFETIME(class, variable);
+	// - Owner 클라에만 복제 : DOREPLIFETIME_CONDITION(class, variable, COND_OwnerOnly)
+
 	DOREPLIFETIME_CONDITION(AMyCharacter, OverlappingWeapon, COND_OwnerOnly);
 }
 
-// Called when the game starts or when spawned
-void AMyCharacter::BeginPlay()
-{
-	Super::BeginPlay();
-
-	// Input Mapping Context
-	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
-	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
-		{
-			Subsystem->AddMappingContext(DefaultMappingContext, 0);
-		}
-	}
-	
-}
-
-// Called every frame
-void AMyCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
-
+// Input callbacks
 void AMyCharacter::Move(const FInputActionValue& Value)
 {
 	// input is a Vector2D
@@ -90,7 +74,7 @@ void AMyCharacter::Move(const FInputActionValue& Value)
 }
 
 void AMyCharacter::Look(const FInputActionValue& Value)
-{	
+{
 	// input is a Vector2D
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
@@ -99,6 +83,29 @@ void AMyCharacter::Look(const FInputActionValue& Value)
 		// add yaw and pitch input to controller
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
+	}
+}
+
+void AMyCharacter::Equip()
+{
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::White, FString(TEXT("Eqiop button pressed")));
+	}
+	
+	if (Combat)
+	{
+		// 서버에서 실행되었을때 -> 바로 무기 장착
+		if (HasAuthority())
+		{
+			Combat->EquipWeapon(OverlappingWeapon);
+		}
+
+		// 클라에서 실행되었을때 -> 서버에 무기 장착 요청(RPC)
+		else
+		{
+			ServerEquip();
+		}
 	}
 }
 
@@ -118,11 +125,46 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
+
+		// Equipping
+		EnhancedInputComponent->BindAction(EquipAction, ETriggerEvent::Started, this, &AMyCharacter::Equip);
 	}
 }
- 
 
-// AWeapon::OnSphereOverlap에서 호출.(서버에서 호출됨)
+// Called after the components are initialized
+void AMyCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	if (Combat)
+	{
+		Combat->Character = this;
+	}
+}
+
+// Called when the game starts or when spawned
+void AMyCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Input Mapping Context
+	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+		{
+			Subsystem->AddMappingContext(DefaultMappingContext, 0);
+		}
+	}
+	
+}
+
+// Called every frame
+void AMyCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+}
+
+// 서버 실행
 void AMyCharacter::SetOverlappingWeapon(AWeapon* Weapon)
 {
 	// Host 클라이언트 무기 위젯 끄기
@@ -143,16 +185,25 @@ void AMyCharacter::SetOverlappingWeapon(AWeapon* Weapon)
 	}
 }
 
-// OverlappingWeapon이 리플리케이트 될 때 호출 (Owner 클라이언트에서 호출)
+// RPC
+void AMyCharacter::ServerEquip_Implementation()
+{
+	if (Combat)
+	{
+		Combat->EquipWeapon(OverlappingWeapon);
+	}
+}
+
+// Owner 클라 실행
 void AMyCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 {
-	// Owner 클라이언트 무기 위젯 끄기
+	// 무기 위젯 끄기
 	if (LastWeapon)
 	{
 		LastWeapon->ShowPickupWidget(false);
 	}
 
-	// Owner 클라이언트 무기 위젯 표시
+	// 무기 위젯 표시
 	if (OverlappingWeapon)
 	{
 		OverlappingWeapon->ShowPickupWidget(true);

@@ -1,4 +1,5 @@
 #include "Weapon.h"
+#include "Net/UnrealNetwork.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
@@ -53,6 +54,18 @@ void AWeapon::Tick(float DeltaTime)
 
 }
 
+void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	// Register variables to be replicated
+	// - 모든 클라에게 복제 : DOREPLIFETIME(class, variable);
+	// - Owner 클라에만 복제 : DOREPLIFETIME_CONDITION(class, variable, COND_OwnerOnly)
+
+	DOREPLIFETIME(AWeapon, WeaponState);
+
+}
+
 void AWeapon::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherPrimitiveComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	AMyCharacter* MyCharacter = Cast<AMyCharacter>(OtherActor);
@@ -72,6 +85,47 @@ void AWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 	}
 }
 
+// 서버 실행
+void AWeapon::SetWeaponState(EWeaponState State)
+{
+	WeaponState = State;
+
+	switch (WeaponState)
+	{
+	case EWeaponState::EWS_Initial:
+		break;
+	case EWeaponState::EWS_Equipped:
+		ShowPickupWidget(false);
+		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 서버에서만 충돌 처리하기 때문에 서버에서만 NoCollsion 설정해도 ok
+		break;
+	case EWeaponState::EWS_Dropped:
+		break;
+	case EWeaponState::EWS_MAX:
+		break;
+	default:
+		break;
+	}
+}
+
+// 클라 실행
+void AWeapon::OnRep_WeaponState()
+{
+	switch (WeaponState)
+	{
+	case EWeaponState::EWS_Initial:
+		break;
+	case EWeaponState::EWS_Equipped:
+		ShowPickupWidget(false);
+		break;
+	case EWeaponState::EWS_Dropped:
+		break;
+	case EWeaponState::EWS_MAX:
+		break;
+	default:
+		break;
+	}
+}
+
 
 void AWeapon::ShowPickupWidget(bool bShowWidget)
 {
@@ -80,4 +134,3 @@ void AWeapon::ShowPickupWidget(bool bShowWidget)
 		PickupWidget->SetVisibility(bShowWidget);
 	}
 }
-
