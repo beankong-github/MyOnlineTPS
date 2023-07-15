@@ -1,4 +1,5 @@
 #include "CombatComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "Components/SphereComponent.h"
 #include "MyOnlineTPS/Weapon/Weapon.h"
@@ -20,6 +21,14 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+}
+
+void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	// [ Register variables to be replicated ]
+	DOREPLIFETIME(UCombatComponent, EquippedWeapon);
 }
 
 // 서버 실행

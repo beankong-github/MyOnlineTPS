@@ -36,6 +36,10 @@ AMyCharacter::AMyCharacter()
 	// Set Combat
 	Combat = CreateDefaultSubobject<UCombatComponent>(TEXT("Combat Component"));
 	Combat->SetIsReplicated(true); // 컴포넌트는 따로 등록할 필요없이 이렇게 함수만 호출해도 리플리케이트 등록이 된다.
+
+	// Set Movement
+	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;  //수구릴 수 있음
+	GetCharacterMovement()->SetCrouchedHalfHeight(60.f);      //수구렸을때 충돌체 높이
 }
 
 void AMyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -87,12 +91,7 @@ void AMyCharacter::Look(const FInputActionValue& Value)
 }
 
 void AMyCharacter::Equip()
-{
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::White, FString(TEXT("Eqiop button pressed")));
-	}
-	
+{	
 	if (Combat)
 	{
 		// 서버에서 실행되었을때 -> 바로 무기 장착
@@ -106,6 +105,18 @@ void AMyCharacter::Equip()
 		{
 			ServerEquip();
 		}
+	}
+}
+
+void AMyCharacter::TryCrouch()
+{
+	if (bIsCrouched)
+	{
+		UnCrouch();
+	}
+	else
+	{
+		Crouch();
 	}
 }
 
@@ -128,6 +139,9 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 		// Equipping
 		EnhancedInputComponent->BindAction(EquipAction, ETriggerEvent::Started, this, &AMyCharacter::Equip);
+
+		// Crouching
+		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Started, this, &AMyCharacter::TryCrouch);
 	}
 }
 
@@ -208,4 +222,9 @@ void AMyCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 	{
 		OverlappingWeapon->ShowPickupWidget(true);
 	}
+}
+
+bool AMyCharacter::IsWeaponEquipped()
+{
+	return (Combat && Combat->EquippedWeapon);
 }

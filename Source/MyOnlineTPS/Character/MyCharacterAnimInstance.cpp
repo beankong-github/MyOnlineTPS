@@ -36,4 +36,10 @@ void UMyCharacterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	// 가속중인지 확인하기
 	bIsAccelerating = MyCharacter->GetCharacterMovement()->GetCurrentAcceleration().Size() > 0 ? true : false;
 
+	// 무기 장착중인지 확인
+	bWeaponEquipped = MyCharacter->IsWeaponEquipped();
+
+	// 쭈구리고 있는지 확인
+	bIsCrouched = MyCharacter->bIsCrouched;
+
 }
