@@ -2,6 +2,8 @@
 #include "Net/UnrealNetwork.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "Components/SphereComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
+
 #include "MyOnlineTPS/Weapon/Weapon.h"
 #include "MyOnlineTPS/Character/MyCharacter.h"
 
@@ -17,6 +19,14 @@ void UCombatComponent::BeginPlay()
 
 }
 
+void UCombatComponent::SetAiming(bool bIsAiming)
+{
+	bAiming = bIsAiming;
+	
+	// 클라면 서버에서도 Aiming 설정
+	ServerSetAimg(bIsAiming);
+}
+
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -29,7 +39,23 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
 	// [ Register variables to be replicated ]
 	DOREPLIFETIME(UCombatComponent, EquippedWeapon);
+	DOREPLIFETIME(UCombatComponent, bAiming);
 }
+
+void UCombatComponent::OnRep_EquippedWeapon()
+{
+	if (EquippedWeapon && Character)
+	{
+		Character->GetCharacterMovement()->bOrientRotationToMovement = false;
+		Character->bUseControllerRotationYaw = true;
+	}
+}
+
+void UCombatComponent::ServerSetAimg_Implementation(bool bIsAiming)
+{
+	bAiming = bIsAiming;
+}
+
 
 // 서버 실행
 void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
@@ -52,5 +78,9 @@ void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 
 	// 무기의 Owner를 캐릭터로 설정 (replicate)
 	EquippedWeapon->SetOwner(Character); 
+
+	Character->GetCharacterMovement()->bOrientRotationToMovement = false;
+	Character->bUseControllerRotationYaw = true;
+
 }
 

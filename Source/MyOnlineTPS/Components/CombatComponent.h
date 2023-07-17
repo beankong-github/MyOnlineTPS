@@ -20,8 +20,11 @@ public:
 private:
 	class AMyCharacter* Character;
 
+	UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon)
+	class AWeapon*	EquippedWeapon;
+	
 	UPROPERTY(Replicated)
-	class AWeapon*		EquippedWeapon;
+	bool bAiming;
 
 public:	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -31,7 +34,15 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	void SetAiming(bool bIsAiming);
+
+	/** RPC **/
+	UFUNCTION(Server, Reliable)
+	void ServerSetAimg(bool bIsAiming);
 
 private:
+	/** OnRep functions **/
+	UFUNCTION()
+	void OnRep_EquippedWeapon();
 		
 };

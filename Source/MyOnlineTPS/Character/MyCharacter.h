@@ -46,6 +46,9 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* CrouchAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputAction* AimAction;
+
 	/** Weapon **/
 	// 충돌처리같은 중요한 이벤트는 서버에서 처리하기 위해 Overlap된 무기를 리플리케이트 변수로 지정. 
 	// 리플리케이트는 변수에 변경점이 생길때만 발생한다. 리플리케이트가 발생하면 서버의 변경점이 클라이언트에 복사되어 반영된다.
@@ -67,6 +70,7 @@ public:
 
 	/** Getters and Setters **/
 	bool IsWeaponEquipped();
+	bool IsAniming();
 	void SetOverlappingWeapon(AWeapon* Weapon);
 
 
@@ -83,9 +87,13 @@ protected:
 	void Look(const FInputActionValue& Value);
 	void Equip();
 	void TryCrouch();
+	void Aim();
+	void AimReleased();
 
 private:
 	/** OnRep functions **/
+	// Rep Notify는 매개변수를 전달할 수 없다. 대신 이전의 값을 매개변수로 받을 수는 있다.
+	// Replicate 값을 매개변수로 받고 싶다면 RPC를 사용하는 것이 좋다.
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 };
