@@ -3,6 +3,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
@@ -37,9 +38,16 @@ AMyCharacter::AMyCharacter()
 	Combat = CreateDefaultSubobject<UCombatComponent>(TEXT("Combat Component"));
 	Combat->SetIsReplicated(true); // 컴포넌트는 따로 등록할 필요없이 이렇게 함수만 호출해도 리플리케이트 등록이 된다.
 
-	// Set Movement
+	// Set Crouch
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;  //수구릴 수 있음
 	GetCharacterMovement()->SetCrouchedHalfHeight(60.f);      //수구렸을때 충돌체 높이
+
+	// 카메라와 플레이어 사이에 다른 플레이어가 있을 때 카메라 위치 이동 끄기
+	// 캡슐 콜라이더와 카메라 충돌 반응 무시
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+	// 메쉬와 카메라 충돌 반응 무시
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+
 }
 
 void AMyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

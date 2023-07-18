@@ -10,13 +10,18 @@
 UCombatComponent::UCombatComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-
+	BaseWalkSpeed = 600.f;
+	AimWalkSpeed = 450.f;
 }
 
 void UCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (Character)
+	{
+		Character->GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
+	}
 }
 
 void UCombatComponent::SetAiming(bool bIsAiming)
@@ -25,7 +30,26 @@ void UCombatComponent::SetAiming(bool bIsAiming)
 	
 	// 클라면 서버에서도 Aiming 설정
 	ServerSetAimg(bIsAiming);
+
+	// 걸음 속도 조정
+	if (Character)
+	{
+		Character->GetCharacterMovement()->MaxWalkSpeed = bIsAiming ? AimWalkSpeed : BaseWalkSpeed;
+	}
 }
+
+// RPC
+void UCombatComponent::ServerSetAimg_Implementation(bool bIsAiming)
+{
+	bAiming = bIsAiming;
+
+	// 걸음 속도 조정
+	if (Character)
+	{
+		Character->GetCharacterMovement()->MaxWalkSpeed = bIsAiming ? AimWalkSpeed : BaseWalkSpeed;
+	}
+}
+
 
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
@@ -42,6 +66,7 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(UCombatComponent, bAiming);
 }
 
+// 클라 실행
 void UCombatComponent::OnRep_EquippedWeapon()
 {
 	if (EquippedWeapon && Character)
@@ -50,12 +75,6 @@ void UCombatComponent::OnRep_EquippedWeapon()
 		Character->bUseControllerRotationYaw = true;
 	}
 }
-
-void UCombatComponent::ServerSetAimg_Implementation(bool bIsAiming)
-{
-	bAiming = bIsAiming;
-}
-
 
 // 서버 실행
 void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
