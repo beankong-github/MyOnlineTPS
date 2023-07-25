@@ -5,6 +5,7 @@
 #include "MyCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "MyOnlineTPS/Weapon/Weapon.h"
 
 void UMyCharacterAnimInstance::NativeInitializeAnimation()
 {
@@ -26,23 +27,21 @@ void UMyCharacterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	}
 	if (nullptr == MyCharacter) return;
 
-	// 스피드 얻어오기
+	// 스피드
 	FVector Velocity = MyCharacter->GetVelocity();
 	Velocity.Z = 0.f;
 	Speed = Velocity.Size();
 
-	// 공중에 있는지 확인하기
+	// 플레이어 상태 확인
 	bIsInAir = MyCharacter->GetCharacterMovement()->IsFalling();
-
-	// 가속중인지 확인하기
 	bIsAccelerating = MyCharacter->GetCharacterMovement()->GetCurrentAcceleration().Size() > 0 ? true : false;
 
-	// 무기 장착중인지 확인
 	bWeaponEquipped = MyCharacter->IsWeaponEquipped();
+	EquippedWeapon = MyCharacter->GetEquippedWeapon();
 
-	// 쭈구리고 있는지 확인
 	bIsCrouched = MyCharacter->bIsCrouched;
-	bIsAiming = MyCharacter->IsAniming();
+	bIsAiming = MyCharacter->IsAiming();
+	TurningInPlace = MyCharacter->GetTurningInPlace();
 
 	// 좌우앞뒤로 기울이기
 	// yaw => z축 기준 회전축
@@ -52,7 +51,6 @@ void UMyCharacterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	DeletaRotation = FMath::RInterpTo(DeltaRot, DeltaRot, DeltaTime, 6.f);
 	YawOffset = DeletaRotation.Yaw;
 
-
 	// 기대기
 	CharacterRotationLastFrame = CharacterRotation;
 	CharacterRotation = MyCharacter->GetActorRotation();
@@ -60,4 +58,22 @@ void UMyCharacterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	const float Target = Delta.Yaw / DeltaTime;
 	const float Interp = FMath::FInterpTo(Lean, Target, DeltaTime, 6.f);
 	Lean = FMath::Clamp(Interp, -90.f, 90.f);
+
+	// Aim Offset
+	AO_Yaw = MyCharacter->GetAO_Yaw();
+	AO_Pitch = MyCharacter->GetAO_Pitch();
+
+	
+	if (bWeaponEquipped && EquippedWeapon && EquippedWeapon->GetWeaponMesh() && MyCharacter->GetMesh())
+	{
+		LeftHandTransform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("LeftHandSocket"), ERelativeTransformSpace::RTS_World);
+		FVector OutPosition;
+		FRotator OutRotation;
+
+		// LeftHand 소켓 월드 위치의 캐릭터의 오른손 소켓에 대한 상대 위치를 구한다. (무기는 항상 오른손에 고정으로 달려있기 때문에) 
+		MyCharacter->GetMesh()->TransformToBoneSpace(FName("hand_r"), LeftHandTransform.GetLocation(), FRotator::ZeroRotator, OutPosition, OutRotation);
+
+		LeftHandTransform.SetLocation(OutPosition);
+		LeftHandTransform.SetRotation(FQuat(OutRotation));
+	}
 }

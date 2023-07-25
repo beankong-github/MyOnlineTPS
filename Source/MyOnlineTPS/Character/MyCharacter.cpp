@@ -9,6 +9,7 @@
 #include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Kismet/KismetMathLibrary.h"
 
 #include "MyOnlineTPS/Weapon/Weapon.h"
 #include "MyOnlineTPS/Components/CombatComponent.h"
@@ -47,6 +48,9 @@ AMyCharacter::AMyCharacter()
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 	// 메쉬와 카메라 충돌 반응 무시
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+
+	// 회전 상태 초기화
+	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
 
 }
 
@@ -204,7 +208,82 @@ void AMyCharacter::BeginPlay()
 void AMyCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	AimOffset(DeltaTime);
 }
+
+void AMyCharacter::AimOffset(float DeltaTime)
+{
+	if (Combat && Combat->EquippedWeapon == nullptr) return;
+
+	// 속도 체크
+	FVector Velocity = GetVelocity();
+	Velocity.Z = 0.f; // z축은 고려하지 않는다.
+	float Speed = Velocity.Size();
+
+	// 공중 체크
+	bool bIsInAir = GetCharacterMovement()->IsFalling();
+
+	// AO_Yaw
+	// 제자리에 서있을 때 z축 Aim Offset을 사용한다.
+	if (Speed == 0.f && !bIsInAir)
+	{
+		FRotator CurrentAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+		FRotator DeltaAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(CurrentAimRotation, StartingAimRotation);
+		AO_Yaw = DeltaAimRotation.Yaw;
+		if (TurningInPlace == ETurningInPlace::ETIP_NotTurning)
+		{
+			InterpAO_Yaw = AO_Yaw;
+
+		}
+		bUseControllerRotationYaw = true;	
+		TurnInPlace(DeltaTime);
+	}
+
+	// 뛰거나 점프할 때 현재 프레임의 Yaw 기록
+	if (Speed > 0.f || bIsInAir)
+	{
+		StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+		AO_Yaw = 0.f;
+		bUseControllerRotationYaw = true;
+
+		TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+	}
+
+	// AO_Pitch
+	AO_Pitch = GetBaseAimRotation().Pitch;
+	if (AO_Pitch > 90.f  && !IsLocallyControlled())
+	{
+		// [270, 360) -> [-90, 0)
+		FVector2D InRange(270.f, 360.f);
+		FVector2D OutRange(-90.f, 0.f);
+
+		AO_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AO_Pitch);
+	}
+}
+
+void AMyCharacter::TurnInPlace(float DeltaTime)
+{
+	if (AO_Yaw > 90.f)
+	{
+		TurningInPlace = ETurningInPlace::ETIP_Right;
+	}
+	else if (AO_Yaw < -90.f)
+	{
+		TurningInPlace = ETurningInPlace::ETIP_Left;
+	}
+	if (TurningInPlace != ETurningInPlace::ETIP_NotTurning)
+	{
+		InterpAO_Yaw = FMath::FInterpTo(InterpAO_Yaw, 0.f, DeltaTime, 4.f);
+		AO_Yaw = InterpAO_Yaw;
+		if (FMath::Abs(AO_Yaw) < 15.f)
+		{
+			TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+			StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+		}
+	}
+}
+
 
 // 서버 실행
 void AMyCharacter::SetOverlappingWeapon(AWeapon* Weapon)
@@ -225,6 +304,12 @@ void AMyCharacter::SetOverlappingWeapon(AWeapon* Weapon)
 		if (OverlappingWeapon)
 			OverlappingWeapon->ShowPickupWidget(true);
 	}
+}
+
+AWeapon* AMyCharacter::GetEquippedWeapon()
+{
+	if(Combat == nullptr) return nullptr;
+	return Combat->EquippedWeapon;
 }
 
 // RPC
@@ -252,12 +337,13 @@ void AMyCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 	}
 }
 
+
 bool AMyCharacter::IsWeaponEquipped()
 {
 	return (Combat && Combat->EquippedWeapon);
 }
 
-bool AMyCharacter::IsAniming()
+bool AMyCharacter::IsAiming()
 {
 	return (Combat && Combat->bAiming);
 }

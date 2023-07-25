@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
+#include "MyOnlineTPS/MyTypes/TurningInPlace.h"
 
 #include "MyCharacter.generated.h"
 
@@ -61,6 +62,14 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* Combat;
 
+	/** Aim Offset **/
+	float AO_Yaw;
+	float InterpAO_Yaw;
+	float AO_Pitch;
+	FRotator StartingAimRotation;
+
+	ETurningInPlace TurningInPlace;
+
 public:	
 	/** Overridden Functions **/
 	virtual void Tick(float DeltaTime) override;
@@ -70,9 +79,12 @@ public:
 
 	/** Getters and Setters **/
 	bool IsWeaponEquipped();
-	bool IsAniming();
+	bool IsAiming();
 	void SetOverlappingWeapon(AWeapon* Weapon);
-
+	FORCEINLINE float GetAO_Yaw() const { return AO_Yaw; }
+	FORCEINLINE float GetAO_Pitch() const { return AO_Pitch; }
+	AWeapon* GetEquippedWeapon();
+	FORCEINLINE ETurningInPlace GetTurningInPlace() const { return TurningInPlace;}
 
 	/** RPCs **/
 	UFUNCTION(Server, Reliable)
@@ -89,6 +101,7 @@ protected:
 	void TryCrouch();
 	void Aim();
 	void AimReleased();
+	void AimOffset(float DeltaTime);
 
 private:
 	/** OnRep functions **/
@@ -96,4 +109,8 @@ private:
 	// Replicate 값을 매개변수로 받고 싶다면 RPC를 사용하는 것이 좋다.
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
+
+	/** ETC **/
+	void TurnInPlace(float DeltaTime);
+
 };
