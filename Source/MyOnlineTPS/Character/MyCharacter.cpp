@@ -51,6 +51,9 @@ AMyCharacter::AMyCharacter()
 
 	// 회전 상태 초기화
 	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+	NetUpdateFrequency = 66.f;
+	MinNetUpdateFrequency = 33.f;
+	GetCharacterMovement()->RotationRate = FRotator(0.f, 0.f, 850.f);
 
 }
 
@@ -73,7 +76,7 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		// Jumping
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &AMyCharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 
 		// Moving
@@ -103,6 +106,14 @@ void AMyCharacter::PostInitializeComponents()
 	{
 		Combat->Character = this;
 	}
+}
+
+void AMyCharacter::Jump()
+{
+	if (bIsCrouched)
+		UnCrouch();
+	else
+		Super::Jump();
 }
 
 // Input callbacks
@@ -336,7 +347,6 @@ void AMyCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 		OverlappingWeapon->ShowPickupWidget(true);
 	}
 }
-
 
 bool AMyCharacter::IsWeaponEquipped()
 {

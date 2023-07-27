@@ -95,6 +95,7 @@ protected:
 	virtual void BeginPlay() override;
 
 	/** Input Callbacks **/
+	virtual void Jump() override;
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
 	void Equip();
