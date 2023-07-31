@@ -38,6 +38,15 @@ void UCombatComponent::SetAiming(bool bIsAiming)
 	}
 }
 
+void UCombatComponent::SetFire(bool bPressed)
+{
+	bFire = bPressed;
+	if (Character && bFire)
+	{
+		Character->PlayFireMontage(bAiming);
+	}
+}
+
 // RPC
 void UCombatComponent::ServerSetAimg_Implementation(bool bIsAiming)
 {

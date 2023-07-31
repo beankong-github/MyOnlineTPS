@@ -50,6 +50,9 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* AimAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputAction* FireAction;
+
 	/** Weapon **/
 	// 충돌처리같은 중요한 이벤트는 서버에서 처리하기 위해 Overlap된 무기를 리플리케이트 변수로 지정. 
 	// 리플리케이트는 변수에 변경점이 생길때만 발생한다. 리플리케이트가 발생하면 서버의 변경점이 클라이언트에 복사되어 반영된다.
@@ -69,6 +72,9 @@ private:
 	FRotator StartingAimRotation;
 
 	ETurningInPlace TurningInPlace;
+
+	UPROPERTY(EditAnywhere, category = Combat)
+	class UAnimMontage* FireWeaponMontage;
 
 public:	
 	/** Overridden Functions **/
@@ -90,6 +96,10 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerEquip();
 
+	
+	/** Etc. **/
+	void PlayFireMontage(bool bAiming);
+
 protected:	
 	/** Overridden functions **/
 	virtual void BeginPlay() override;
@@ -103,6 +113,8 @@ protected:
 	void Aim();
 	void AimReleased();
 	void AimOffset(float DeltaTime);
+	void Fire();
+	void FireReleased();
 
 private:
 	/** OnRep functions **/
@@ -111,7 +123,7 @@ private:
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 
-	/** ETC **/
+	/** Etc. **/
 	void TurnInPlace(float DeltaTime);
 
 };

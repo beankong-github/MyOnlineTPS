@@ -25,6 +25,9 @@ private:
 	
 	UPROPERTY(Replicated)
 	bool bAiming;
+
+	//UPROPERTY(Replicated)
+	bool bFire;
 	
 	UPROPERTY(EditAnywhere)
 	float BaseWalkSpeed;
@@ -41,6 +44,7 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	void SetAiming(bool bIsAiming);
+	void SetFire(bool bPressed);
 
 	/** RPC **/
 	UFUNCTION(Server, Reliable)

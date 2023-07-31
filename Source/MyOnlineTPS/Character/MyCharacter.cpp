@@ -13,6 +13,7 @@
 
 #include "MyOnlineTPS/Weapon/Weapon.h"
 #include "MyOnlineTPS/Components/CombatComponent.h"
+#include "MyCharacterAnimInstance.h"
 
 AMyCharacter::AMyCharacter()
 {
@@ -94,6 +95,10 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		// Animing
 		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Triggered, this, &AMyCharacter::Aim);
 		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &AMyCharacter::AimReleased);
+
+		// Fire
+		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Triggered,this, &AMyCharacter::Fire);
+		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Completed, this, &AMyCharacter::FireReleased);
 	}
 }
 
@@ -199,6 +204,36 @@ void AMyCharacter::AimReleased()
 	}
 }
 
+void AMyCharacter::Fire()
+{
+	if (Combat)
+	{
+		Combat->SetFire(true);
+	}
+}
+
+void AMyCharacter::FireReleased()
+{
+	if (Combat)
+	{
+		Combat->SetFire(false);
+	}
+}
+void AMyCharacter::PlayFireMontage(bool bAiming)
+{
+	if (Combat == nullptr || Combat->EquippedWeapon == nullptr) return;
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && FireWeaponMontage)
+	{
+		if (!AnimInstance->Montage_IsPlaying(FireWeaponMontage))
+		{
+			AnimInstance->Montage_Play(FireWeaponMontage);
+			FName SectionName = bAiming ? FName("RifleAim") : FName("RifleHip");
+			AnimInstance->Montage_JumpToSection(SectionName);
+		}
+	}
+}
 // Called when the game starts or when spawned
 void AMyCharacter::BeginPlay()
 {
