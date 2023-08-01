@@ -6,6 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "CombatComponent.generated.h"
 
+#define TRACE_LENGTH 80'000.f
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class MYONLINETPS_API UCombatComponent : public UActorComponent
@@ -26,7 +27,6 @@ private:
 	UPROPERTY(Replicated)
 	bool bAiming;
 
-	//UPROPERTY(Replicated)
 	bool bFire;
 	
 	UPROPERTY(EditAnywhere)
@@ -35,6 +35,9 @@ private:
 	UPROPERTY(EditAnywhere)
 	float AimWalkSpeed;
 
+	FVector HitTarget;
+
+
 public:	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -42,13 +45,25 @@ public:
 	void EquipWeapon(class AWeapon* WeaponToEquip);
 
 protected:
+	/** Overridings **/
 	virtual void BeginPlay() override;
+
+	/** Getters and Setters **/
 	void SetAiming(bool bIsAiming);
 	void SetFire(bool bPressed);
 
 	/** RPC **/
 	UFUNCTION(Server, Reliable)
 	void ServerSetAimg(bool bIsAiming);
+
+	UFUNCTION(Server, Reliable)
+	void ServerFire();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastFire();
+
+	/** Functions **/
+	void TraceUnderCrosshair(FHitResult& TraceHitResult);
 
 private:
 	/** OnRep functions **/

@@ -77,7 +77,7 @@ private:
 	class UAnimMontage* FireWeaponMontage;
 
 public:	
-	/** Overridden Functions **/
+	/** Overridings **/
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override; 
@@ -96,12 +96,11 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerEquip();
 
-	
-	/** Etc. **/
+	/** Functions **/
 	void PlayFireMontage(bool bAiming);
 
 protected:	
-	/** Overridden functions **/
+	/** Overridings **/
 	virtual void BeginPlay() override;
 
 	/** Input Callbacks **/
@@ -123,7 +122,7 @@ private:
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 
-	/** Etc. **/
+	/** Functions **/
 	void TurnInPlace(float DeltaTime);
 
 };

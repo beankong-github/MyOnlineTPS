@@ -3,16 +3,27 @@
 #include "Engine/SkeletalMeshSocket.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 #include "MyOnlineTPS/Weapon/Weapon.h"
 #include "MyOnlineTPS/Character/MyCharacter.h"
 
 UCombatComponent::UCombatComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = true;
 	BaseWalkSpeed = 600.f;
 	AimWalkSpeed = 450.f;
 }
+
+void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	// [ Register variables to be replicated ]
+	DOREPLIFETIME(UCombatComponent, EquippedWeapon);
+	DOREPLIFETIME(UCombatComponent, bAiming);
+}
+
 
 void UCombatComponent::BeginPlay()
 {
@@ -22,6 +33,15 @@ void UCombatComponent::BeginPlay()
 	{
 		Character->GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 	}
+}
+
+void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	FHitResult HitResult;
+	TraceUnderCrosshair(HitResult);
+
 }
 
 void UCombatComponent::SetAiming(bool bIsAiming)
@@ -38,15 +58,6 @@ void UCombatComponent::SetAiming(bool bIsAiming)
 	}
 }
 
-void UCombatComponent::SetFire(bool bPressed)
-{
-	bFire = bPressed;
-	if (Character && bFire)
-	{
-		Character->PlayFireMontage(bAiming);
-	}
-}
-
 // RPC
 void UCombatComponent::ServerSetAimg_Implementation(bool bIsAiming)
 {
@@ -59,20 +70,92 @@ void UCombatComponent::ServerSetAimg_Implementation(bool bIsAiming)
 	}
 }
 
-
-void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UCombatComponent::SetFire(bool bPressed)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	bFire = bPressed;
 
+	if(bFire)
+		ServerFire();
 }
 
-void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+// RPC
+void UCombatComponent::ServerFire_Implementation()
 {
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	MulticastFire();
+}
 
-	// [ Register variables to be replicated ]
-	DOREPLIFETIME(UCombatComponent, EquippedWeapon);
-	DOREPLIFETIME(UCombatComponent, bAiming);
+// Muticast RRC (서버-> 클라이언트들)
+void UCombatComponent::MulticastFire_Implementation()
+{
+	if (EquippedWeapon == nullptr) return;
+
+	if (Character)
+	{
+		Character->PlayFireMontage(bAiming);
+		EquippedWeapon->Fire(HitTarget);
+	}
+}
+
+void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
+{
+	FVector2D ViewportSoze;
+
+	// 화면 크기 구하기
+	if (GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->GetViewportSize(ViewportSoze);
+	}
+
+	// 화면 중앙에 Crosshair 두기
+	FVector2D CrosshairLocation(ViewportSoze.X / 2.f, ViewportSoze.Y/2.f);
+	
+	// Crosshair 위치를 World 기준 위치로 변환
+	FVector CrosshairWorldPosition;
+	FVector CrosshairWorldDirection;
+	bool bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld(
+		UGameplayStatics::GetPlayerController(this, 0),
+		CrosshairLocation,
+		CrosshairWorldPosition,
+		CrosshairWorldDirection
+	);
+
+	// Crosshair부터 직선으로 TRACE_LENGTH만큼 충돌 검사
+	if (bScreenToWorld)
+	{
+		// 충돌 검사 시작 지점
+		FVector Start = CrosshairWorldPosition;
+		// 충돌 검사 종료 지점
+		FVector End = Start + CrosshairWorldDirection * TRACE_LENGTH;
+
+		// 충돌한 오브젝트(TraceHitResult)를 구한다.
+		GetWorld()->LineTraceSingleByChannel(
+			TraceHitResult,
+			Start,
+			End,
+			ECollisionChannel::ECC_Visibility			
+		);
+
+		// 충돌한 것이 없다면
+		if (!TraceHitResult.bBlockingHit)
+		{
+			TraceHitResult.ImpactPoint = End;
+			HitTarget = End;
+		}
+
+		// 충돌한 것이 있다면
+		else
+		{
+			HitTarget = TraceHitResult.ImpactPoint;
+			// 충돌지점에 원 그리기
+			DrawDebugSphere(
+				GetWorld(),
+				TraceHitResult.ImpactPoint,
+				12.f,
+				8,
+				FColor::Red
+			);
+		}
+	}
 }
 
 // 클라 실행

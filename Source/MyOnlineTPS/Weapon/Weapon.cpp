@@ -3,6 +3,8 @@
 #include "Components/PrimitiveComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Animation/AnimationAsset.h"
 #include "MyOnlineTPS/Character/MyCharacter.h"
 
 AWeapon::AWeapon()
@@ -132,5 +134,14 @@ void AWeapon::ShowPickupWidget(bool bShowWidget)
 	if (PickupWidget)
 	{
 		PickupWidget->SetVisibility(bShowWidget);
+	}
+}
+
+void AWeapon::Fire(const FVector& HitTarget)
+{
+	if (FireAnimation)
+	{
+		if(!WeaponMesh->IsPlaying())
+			WeaponMesh->PlayAnimation(FireAnimation, false);
 	}
 }
