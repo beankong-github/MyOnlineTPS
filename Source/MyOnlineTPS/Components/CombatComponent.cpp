@@ -38,10 +38,6 @@ void UCombatComponent::BeginPlay()
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	FHitResult HitResult;
-	TraceUnderCrosshair(HitResult);
-
 }
 
 void UCombatComponent::SetAiming(bool bIsAiming)
@@ -74,25 +70,29 @@ void UCombatComponent::SetFire(bool bPressed)
 {
 	bFire = bPressed;
 
-	if(bFire)
-		ServerFire();
+	if (bFire)
+	{
+		FHitResult HitResult;
+		TraceUnderCrosshair(HitResult);
+		ServerFire(HitResult.ImpactPoint);
+	}
 }
 
 // RPC
-void UCombatComponent::ServerFire_Implementation()
+void UCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
 {
-	MulticastFire();
+	MulticastFire(TraceHitTarget);
 }
 
-// Muticast RRC (서버-> 클라이언트들)
-void UCombatComponent::MulticastFire_Implementation()
+// Muticast RRC (서버-> 모든 클라이언트)
+void UCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
 {
 	if (EquippedWeapon == nullptr) return;
 
 	if (Character)
 	{
 		Character->PlayFireMontage(bAiming);
-		EquippedWeapon->Fire(HitTarget);
+		EquippedWeapon->Fire(TraceHitTarget);
 	}
 }
 
@@ -139,21 +139,6 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 		if (!TraceHitResult.bBlockingHit)
 		{
 			TraceHitResult.ImpactPoint = End;
-			HitTarget = End;
-		}
-
-		// 충돌한 것이 있다면
-		else
-		{
-			HitTarget = TraceHitResult.ImpactPoint;
-			// 충돌지점에 원 그리기
-			DrawDebugSphere(
-				GetWorld(),
-				TraceHitResult.ImpactPoint,
-				12.f,
-				8,
-				FColor::Red
-			);
 		}
 	}
 }

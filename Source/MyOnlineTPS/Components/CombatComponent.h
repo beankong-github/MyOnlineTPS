@@ -35,9 +35,6 @@ private:
 	UPROPERTY(EditAnywhere)
 	float AimWalkSpeed;
 
-	FVector HitTarget;
-
-
 public:	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -57,10 +54,10 @@ protected:
 	void ServerSetAimg(bool bIsAiming);
 
 	UFUNCTION(Server, Reliable)
-	void ServerFire();
+	void ServerFire(const FVector_NetQuantize& TraceHitTarget);
 
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastFire();
+	void MulticastFire(const FVector_NetQuantize& TraceHitTarget);
 
 	/** Functions **/
 	void TraceUnderCrosshair(FHitResult& TraceHitResult);
