@@ -10,10 +10,10 @@ AProjectileWeapon::AProjectileWeapon()
 void AProjectileWeapon::Fire(const FVector& HitTarget)
 {
 	Super::Fire(HitTarget);
-	APawn* InstigatorPawn = Cast<APawn>(GetOwner());
 
 	if (!HasAuthority()) return;
 
+	APawn* InstigatorPawn = Cast<APawn>(GetOwner());
 	const USkeletalMeshSocket* MuzzleFlashSocket = GetWeaponMesh()->GetSocketByName(FName("MuzzleFlash"));
 	if (MuzzleFlashSocket)
 	{
@@ -22,7 +22,7 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
 		FVector ToTarget = HitTarget - SocketTransform.GetLocation();
 		FRotator  TargetRatation = ToTarget.Rotation();
 
-		if (ProjectilClass)
+		if (ProjectilClass && InstigatorPawn)
 		{
 			FActorSpawnParameters SpwnParams;
 			SpwnParams.Owner = GetOwner();			// 투사체 주인 : 무기 소유주(플래이어)
@@ -40,4 +40,5 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
 			}
 		}
 	}
+
 }

@@ -5,7 +5,9 @@
 #include "Components/WidgetComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimationAsset.h"
+#include "Engine/SkeletalMeshSocket.h"
 #include "MyOnlineTPS/Character/MyCharacter.h"
+#include "BulletShell.h"
 
 AWeapon::AWeapon()
 {
@@ -141,7 +143,29 @@ void AWeapon::Fire(const FVector& HitTarget)
 {
 	if (FireAnimation)
 	{
-		if(!WeaponMesh->IsPlaying())
+		if (!WeaponMesh->IsPlaying())
 			WeaponMesh->PlayAnimation(FireAnimation, false);
+	}
+
+	// 탄피 생성
+	if (BulletShellClass)
+	{
+		const USkeletalMeshSocket* AmmoEjectSocket = WeaponMesh->GetSocketByName(FName("AmmoEject"));
+		if (AmmoEjectSocket)
+		{
+			FTransform SocketTransform = AmmoEjectSocket->GetSocketTransform(WeaponMesh);
+
+			FActorSpawnParameters SpwnParams;
+			UWorld* World = GetWorld();
+			if (World)
+			{
+				World->SpawnActor<ABulletShell>(
+					BulletShellClass,
+					SocketTransform.GetLocation(),
+					SocketTransform.GetRotation().Rotator(),
+					SpwnParams
+				);
+			}
+		}
 	}
 }
