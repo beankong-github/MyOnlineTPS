@@ -1,5 +1,6 @@
 #include "BulletShell.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "Sound/SoundCue.h"
 
 ABulletShell::ABulletShell()
@@ -21,7 +22,8 @@ void ABulletShell::BeginPlay()
 	Super::BeginPlay();
 	
 	BulletShellMesh->OnComponentHit.AddDynamic(this, &ABulletShell::OnHit);
-	BulletShellMesh->AddImpulse(GetActorForwardVector() * ShellEjectionImpulse);
+	FVector RandomDir = UKismetMathLibrary::RandomUnitVectorInConeInDegrees(GetActorForwardVector(), 20.f);
+	BulletShellMesh->AddImpulse(RandomDir * ShellEjectionImpulse);
 }
 
 void ABulletShell::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)

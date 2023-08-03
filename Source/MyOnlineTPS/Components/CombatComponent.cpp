@@ -7,12 +7,20 @@
 
 #include "MyOnlineTPS/Weapon/Weapon.h"
 #include "MyOnlineTPS/Character/MyCharacter.h"
+#include "MyOnlineTPS/PlayerController/MyCharacterController.h"
+#include "MyOnlineTPS/HUD/MyOnlineTPSHUD.h"
 
 UCombatComponent::UCombatComponent()
+	: Character(nullptr)
+	, Controller(nullptr)
+	, HUD(nullptr)
+	, EquippedWeapon(nullptr)
+	, bAiming(false)
+	, bFire(false)
+	, BaseWalkSpeed(600.f)
+	, AimWalkSpeed(450.f)
 {
 	PrimaryComponentTick.bCanEverTick = true;
-	BaseWalkSpeed = 600.f;
-	AimWalkSpeed = 450.f;
 }
 
 void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -38,6 +46,45 @@ void UCombatComponent::BeginPlay()
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	SetHUDCrosshair(DeltaTime);
+}
+
+void UCombatComponent::SetHUDCrosshair(float DeltaTime)
+{
+	if (Character == nullptr || Character->Controller == nullptr) return;
+
+	if (Controller == nullptr)
+		Controller = Cast<AMyCharacterController>(Character->Controller);
+
+	if (Controller)
+	{
+		if (HUD == nullptr)
+			HUD = Cast<AMyOnlineTPSHUD>(Controller->GetHUD());
+
+		if (HUD)
+		{
+			FHUDPackage HUDPackage;
+			if(EquippedWeapon)
+			{
+				HUDPackage.CrosshairCenter = EquippedWeapon->CrosshairCenter;
+				HUDPackage.CrosshairLeft = EquippedWeapon->CrosshairLeft;
+				HUDPackage.CrosshairRight = EquippedWeapon->CrosshairRight;
+				HUDPackage.CrosshairTop = EquippedWeapon->CrosshairTop;
+				HUDPackage.CrosshairBottom = EquippedWeapon->CrosshairBottom;
+			}
+			else
+			{
+				HUDPackage.CrosshairCenter = nullptr;
+				HUDPackage.CrosshairLeft = nullptr;
+				HUDPackage.CrosshairRight = nullptr;
+				HUDPackage.CrosshairTop = nullptr;
+				HUDPackage.CrosshairBottom = nullptr;
+			}
+			HUD->SetHUDPackage(HUDPackage);
+		}
+	}
+
 }
 
 void UCombatComponent::SetAiming(bool bIsAiming)
@@ -142,6 +189,8 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 		}
 	}
 }
+
+
 
 // 클라 실행
 void UCombatComponent::OnRep_EquippedWeapon()

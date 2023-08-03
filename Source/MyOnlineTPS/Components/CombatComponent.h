@@ -16,10 +16,12 @@ class MYONLINETPS_API UCombatComponent : public UActorComponent
 public:
 	UCombatComponent();
 	
-	friend class AMyCharacter; // 이게 맞나..?
+	friend class AMyCharacter;
 
 private:
 	class AMyCharacter* Character;
+	class AMyCharacterController* Controller;
+	class AMyOnlineTPSHUD* HUD;
 
 	UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon)
 	class AWeapon*	EquippedWeapon;
@@ -61,6 +63,7 @@ protected:
 
 	/** Functions **/
 	void TraceUnderCrosshair(FHitResult& TraceHitResult);
+	void SetHUDCrosshair(float DeltaTime);
 
 private:
 	/** OnRep functions **/
