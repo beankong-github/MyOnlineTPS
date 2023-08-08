@@ -66,6 +66,7 @@ void UMyCharacterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	
 	if (bWeaponEquipped && EquippedWeapon && EquippedWeapon->GetWeaponMesh() && MyCharacter->GetMesh())
 	{
+		// 무기에서 소켓으로 왼손 위치 구하기
 		LeftHandTransform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("LeftHandSocket"), ERelativeTransformSpace::RTS_World);
 		FVector OutPosition;
 		FRotator OutRotation;
@@ -73,7 +74,16 @@ void UMyCharacterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 		// LeftHand 소켓 월드 위치의 캐릭터의 오른손 소켓에 대한 상대 위치를 구한다. (무기는 항상 오른손에 고정으로 달려있기 때문에) 
 		MyCharacter->GetMesh()->TransformToBoneSpace(FName("hand_r"), LeftHandTransform.GetLocation(), FRotator::ZeroRotator, OutPosition, OutRotation);
 
+		// 왼손 위치를 LeftHand 소켓 위치로 바꾼다.
 		LeftHandTransform.SetLocation(OutPosition);
 		LeftHandTransform.SetRotation(FQuat(OutRotation));
+
+		// 총구 위치가 에임 방향으로 향할 수 있도록 오른손 회전 계산
+		if (MyCharacter->IsLocallyControlled())
+		{
+			bLocallyControlled = true;
+			FTransform RightHandTransform = MyCharacter->GetMesh()->GetSocketTransform(FName("Hand_R"), ERelativeTransformSpace::RTS_World);
+			RightHandRotation = UKismetMathLibrary::FindLookAtRotation(RightHandTransform.GetLocation(), RightHandTransform.GetLocation() + (RightHandTransform.GetLocation() - MyCharacter->GetHitTarget()));
+		}
 	}
 }

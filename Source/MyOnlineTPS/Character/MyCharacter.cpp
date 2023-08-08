@@ -358,6 +358,12 @@ AWeapon* AMyCharacter::GetEquippedWeapon()
 	return Combat->EquippedWeapon;
 }
 
+FVector AMyCharacter::GetHitTarget() const
+{
+	if (Combat == nullptr) return FVector();
+	return Combat->HitTarget;
+}
+
 // RPC
 void AMyCharacter::ServerEquip_Implementation()
 {

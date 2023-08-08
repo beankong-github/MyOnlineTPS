@@ -37,6 +37,8 @@ private:
 	UPROPERTY(EditAnywhere)
 	float AimWalkSpeed;
 
+	FVector HitTarget;
+
 	/** HUD and Crosshair **/
 	float CrosshairVelocityFactor;
 	float CrosshairInAirFactor;
