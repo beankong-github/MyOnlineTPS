@@ -77,6 +77,9 @@ private:
 	UPROPERTY(EditAnywhere, category = Combat)
 	class UAnimMontage* FireWeaponMontage;
 
+	UPROPERTY(EidtAnywhere)
+	float CameraThreshold = 200.f;
+
 public:	
 	/** Overridings **/
 	virtual void Tick(float DeltaTime) override;
@@ -125,7 +128,7 @@ private:
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 
-	/** Functions **/
+	/** Player Action **/
 	void TurnInPlace(float DeltaTime);
-
+	void HideCharcterIfCameraClose();
 };

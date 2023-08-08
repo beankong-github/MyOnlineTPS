@@ -57,7 +57,6 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-
 	if (Character && Character->IsLocallyControlled())
 	{
 		FHitResult HitResult;
@@ -254,6 +253,12 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 	{
 		// 충돌 검사 시작 지점
 		FVector Start = CrosshairWorldPosition;
+		if(Character)
+		{
+			float DistanceToCharacter = (Character->GetActorLocation() - Start).Size();
+			Start += CrosshairWorldPosition * (DistanceToCharacter + 50.f);
+		}
+
 		// 충돌 검사 종료 지점
 		FVector End = Start + CrosshairWorldDirection * TRACE_LENGTH;
 
