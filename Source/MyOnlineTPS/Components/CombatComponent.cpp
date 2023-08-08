@@ -2,13 +2,13 @@
 #include "Net/UnrealNetwork.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "Components/SphereComponent.h"
+#include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 #include "MyOnlineTPS/Weapon/Weapon.h"
 #include "MyOnlineTPS/Character/MyCharacter.h"
 #include "MyOnlineTPS/PlayerController/MyCharacterController.h"
-#include "MyOnlineTPS/HUD/MyOnlineTPSHUD.h"
 
 UCombatComponent::UCombatComponent()
 	: Character(nullptr)
@@ -19,8 +19,10 @@ UCombatComponent::UCombatComponent()
 	, bFire(false)
 	, BaseWalkSpeed(600.f)
 	, AimWalkSpeed(450.f)
+	, DefualtCrosshiarCenterGap(0.5f)
 	, CrosshairVelocityFactor(0.f)
 	, CrosshairInAirFactor(0.f)
+	, CrosshairAimFactor(0.f)
 {
 	PrimaryComponentTick.bCanEverTick = true;
 }
@@ -42,6 +44,12 @@ void UCombatComponent::BeginPlay()
 	if (Character)
 	{
 		Character->GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
+
+		if (Character->GetFollowCamera())
+		{
+			DefaultFOV = Character->GetFollowCamera()->FieldOfView;
+			CurrentFOV = DefaultFOV;
+		}
 	}
 }
 
@@ -49,13 +57,15 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	SetHUDCrosshair(DeltaTime);
 
 	if (Character && Character->IsLocallyControlled())
 	{
 		FHitResult HitResult;
 		TraceUnderCrosshair(HitResult);
 		HitTarget = HitResult.ImpactPoint;
+
+		SetHUDCrosshair(DeltaTime);	
+		InterpFOV(DeltaTime);
 	}
 }
 
@@ -73,7 +83,6 @@ void UCombatComponent::SetHUDCrosshair(float DeltaTime)
 
 		if (HUD)
 		{
-			FHUDPackage HUDPackage;
 			if(EquippedWeapon)
 			{
 				HUDPackage.CrosshairCenter = EquippedWeapon->CrosshairCenter;
@@ -92,8 +101,7 @@ void UCombatComponent::SetHUDCrosshair(float DeltaTime)
 			}
 
 			// Crosshair 움직임 계산하기
-			
-			// 속도
+			// 1. 이동 속도
 			// [0, MaxWalkSpeed] -> [0,1]
 			FVector2D WalkSpeedRange(0.f, Character->GetCharacterMovement()->MaxWalkSpeed);
 			FVector2D VelocityMultiplierRange(0.f, 1.f);
@@ -102,7 +110,7 @@ void UCombatComponent::SetHUDCrosshair(float DeltaTime)
 			
 			CrosshairVelocityFactor = FMath::GetMappedRangeValueClamped(WalkSpeedRange, VelocityMultiplierRange, Velocity.Size());
 
-			// 공중
+			// 2. 공중여부
 			if (Character->GetCharacterMovement()->IsFalling())
 			{
 				CrosshairInAirFactor = FMath::FInterpTo(CrosshairInAirFactor, 2.25f, DeltaTime, 2.25f);
@@ -112,12 +120,49 @@ void UCombatComponent::SetHUDCrosshair(float DeltaTime)
 				CrosshairInAirFactor = FMath::FInterpTo(CrosshairInAirFactor, 0.f, DeltaTime, 30.f);
 			}
 
-			HUDPackage.CrosshairSpread = CrosshairVelocityFactor + CrosshairInAirFactor;
+			// 3. 에임 여부
+			if (bAiming)
+			{
+				CrosshairAimFactor = FMath::FInterpTo(CrosshairAimFactor, 0.58f, DeltaTime, 30.f);
+			}
+			else
+			{
+				CrosshairAimFactor = FMath::FInterpTo(CrosshairAimFactor, 0.f, DeltaTime, 30.f);
+			}
+
+			// 최종 Crosshair 움직임 계산
+			HUDPackage.CrosshairSpread = 
+				DefualtCrosshiarCenterGap
+				+ CrosshairVelocityFactor 
+				+ CrosshairInAirFactor
+				+ CrosshairShootingFactor
+				- CrosshairAimFactor;
+			
+			CrosshairShootingFactor = FMath::FInterpTo(CrosshairShootingFactor, 0.f, DeltaTime, 30.f);
 
 			HUD->SetHUDPackage(HUDPackage);
 		}
 	}
 
+}
+
+void UCombatComponent::InterpFOV(float DeltaTime)
+{
+	if (EquippedWeapon == nullptr) return;
+
+	if (bAiming)
+	{
+		CurrentFOV = FMath::FInterpTo(CurrentFOV, EquippedWeapon->GetZoomedFOV(), DeltaTime, EquippedWeapon->GetZoomInterpSpeed());
+	}
+	else
+	{
+		CurrentFOV = FMath::FInterpTo(CurrentFOV, DefaultFOV, DeltaTime, ZoomInterpSpeed);
+	}
+
+	if (Character && Character->GetFollowCamera())
+	{
+		Character->GetFollowCamera()->SetFieldOfView(CurrentFOV);
+	}
 }
 
 void UCombatComponent::SetAiming(bool bIsAiming)
@@ -155,6 +200,11 @@ void UCombatComponent::SetFire(bool bPressed)
 		FHitResult HitResult;
 		TraceUnderCrosshair(HitResult);
 		ServerFire(HitResult.ImpactPoint);
+
+		if (EquippedWeapon)
+		{
+			CrosshairShootingFactor = 0.2f;
+		}
 	}
 }
 
@@ -214,11 +264,20 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 			End,
 			ECollisionChannel::ECC_Visibility			
 		);
-
 		// 충돌한 것이 없다면
 		if (!TraceHitResult.bBlockingHit)
 		{
 			TraceHitResult.ImpactPoint = End;
+		}
+
+
+		if (TraceHitResult.GetActor() && TraceHitResult.GetActor()->Implements<UInteractWithCrosshairInterface>())
+		{
+			HUDPackage.CrosshiarColor = FLinearColor::Red;
+		}
+		else
+		{
+			HUDPackage.CrosshiarColor = FLinearColor::White;
 		}
 	}
 }

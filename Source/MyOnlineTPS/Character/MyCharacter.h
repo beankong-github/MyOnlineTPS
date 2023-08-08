@@ -4,11 +4,12 @@
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
 #include "MyOnlineTPS/MyTypes/TurningInPlace.h"
+#include "MyOnlineTPS/Interface/InteractWithCrosshairInterface.h"
 
 #include "MyCharacter.generated.h"
 
 UCLASS()
-class MYONLINETPS_API AMyCharacter : public ACharacter
+class MYONLINETPS_API AMyCharacter : public ACharacter, public IInteractWithCrosshairInterface
 {
 	GENERATED_BODY()
 	
@@ -92,6 +93,7 @@ public:
 	AWeapon* GetEquippedWeapon();
 	FORCEINLINE ETurningInPlace GetTurningInPlace() const { return TurningInPlace;}
 	FVector GetHitTarget() const;
+	FORCEINLINE UCameraComponent* GetFollowCamera() { return FollowCamera; }
 
 	/** RPCs **/
 	UFUNCTION(Server, Reliable)

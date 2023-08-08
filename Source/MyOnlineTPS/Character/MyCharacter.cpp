@@ -49,6 +49,8 @@ AMyCharacter::AMyCharacter()
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 	// 메쉬와 카메라 충돌 반응 무시
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+	// Visibility 채널과 충돌
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 
 	// 회전 상태 초기화
 	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
