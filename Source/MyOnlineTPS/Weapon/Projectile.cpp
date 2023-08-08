@@ -5,6 +5,8 @@
 #include "Particles/ParticleSystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundCue.h"
+#include "MyOnlineTPS/Character/MyCharacter.h"
+#include "MyOnlineTPS/MyOnlineTPS.h"
 
 AProjectile::AProjectile()
 {
@@ -18,6 +20,7 @@ AProjectile::AProjectile()
 	CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
+	CollisionBox->SetCollisionResponseToChannel(ECC_SKeletalMesh, ECollisionResponse::ECR_Block);
 
 	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
 	ProjectileMovementComponent->bRotationFollowsVelocity = true; // 중력 영향을 받아 회전함
@@ -48,7 +51,31 @@ void AProjectile::BeginPlay()
 
 void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
+	AMyCharacter* Character = Cast<AMyCharacter>(OtherActor);
+	if (Character)
+	{
+		Character->Multicast_Hit();
+	}
+
+	if (HasAuthority())
+	{
+		Multicast_OnHit();
+	}
+
 	Destroy();
+}
+
+void AProjectile::Multicast_OnHit_Implementation()
+{
+	if (ImpactParticle)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticle, GetActorTransform());
+	}
+
+	if (ImpactSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
+	}
 }
 
 void AProjectile::Tick(float DeltaTime)
@@ -60,15 +87,5 @@ void AProjectile::Tick(float DeltaTime)
 void AProjectile::Destroyed()
 {
 	Super::Destroyed();
-
-	if (ImpactParticle)
-	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticle, GetActorTransform());
-	}
-
-	if (ImpactSound)
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
-	}
 }
 

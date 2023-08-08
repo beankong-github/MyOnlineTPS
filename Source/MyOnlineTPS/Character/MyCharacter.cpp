@@ -10,9 +10,9 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Kismet/KismetMathLibrary.h"
-
 #include "MyOnlineTPS/Weapon/Weapon.h"
 #include "MyOnlineTPS/Components/CombatComponent.h"
+#include "MyOnlineTPS/MyOnlineTPS.h"
 #include "MyCharacterAnimInstance.h"
 
 AMyCharacter::AMyCharacter()
@@ -44,13 +44,12 @@ AMyCharacter::AMyCharacter()
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;  //수구릴 수 있음
 	GetCharacterMovement()->SetCrouchedHalfHeight(60.f);      //수구렸을때 충돌체 높이
 
-	// 카메라와 플레이어 사이에 다른 플레이어가 있을 때 카메라 위치 이동 끄기
-	// 캡슐 콜라이더와 카메라 충돌 반응 무시
+	// Set Collision
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
-	// 메쉬와 카메라 충돌 반응 무시
+	GetMesh()->SetCollisionObjectType(ECC_SKeletalMesh);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
-	// Visibility 채널과 충돌
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+
 
 	// 회전 상태 초기화
 	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
@@ -221,6 +220,7 @@ void AMyCharacter::FireReleased()
 		Combat->SetFire(false);
 	}
 }
+
 void AMyCharacter::PlayFireMontage(bool bAiming)
 {
 	if (Combat == nullptr || Combat->EquippedWeapon == nullptr) return;
@@ -236,6 +236,27 @@ void AMyCharacter::PlayFireMontage(bool bAiming)
 		}
 	}
 }
+void AMyCharacter::PlayHitReactMontage()
+{
+	if (Combat == nullptr || Combat->EquippedWeapon == nullptr) return;
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && HitReactMontage)
+	{
+		if (!AnimInstance->Montage_IsPlaying(HitReactMontage))
+		{
+			AnimInstance->Montage_Play(HitReactMontage);
+			FName SectionName = FName("FromFront");
+			AnimInstance->Montage_JumpToSection(SectionName);
+		}
+	}
+}
+
+void AMyCharacter::Multicast_Hit_Implementation()
+{
+	PlayHitReactMontage();
+}
+
 // Called when the game starts or when spawned
 void AMyCharacter::BeginPlay()
 {

@@ -236,7 +236,7 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 	}
 
 	// 화면 중앙에 Crosshair 두기
-	FVector2D CrosshairLocation(ViewportSoze.X / 2.f, ViewportSoze.Y/2.f);
+	FVector2D CrosshairLocation(ViewportSoze.X/2.f, ViewportSoze.Y/2.f);
 	
 	// Crosshair 위치를 World 기준 위치로 변환
 	FVector CrosshairWorldPosition;
@@ -253,14 +253,14 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 	{
 		// 충돌 검사 시작 지점
 		FVector Start = CrosshairWorldPosition;
-		if(Character)
+		if (Character)
 		{
 			float DistanceToCharacter = (Character->GetActorLocation() - Start).Size();
-			Start += CrosshairWorldPosition * (DistanceToCharacter + 50.f);
+			Start += CrosshairWorldDirection * (DistanceToCharacter + 30.f);
 		}
 
 		// 충돌 검사 종료 지점
-		FVector End = Start + CrosshairWorldDirection * TRACE_LENGTH;
+		FVector End = Start + (CrosshairWorldDirection * TRACE_LENGTH);
 
 		// 충돌한 오브젝트(TraceHitResult)를 구한다.
 		GetWorld()->LineTraceSingleByChannel(
@@ -269,8 +269,9 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 			End,
 			ECollisionChannel::ECC_Visibility			
 		);
+
 		// 충돌한 것이 없다면
-		if (!TraceHitResult.bBlockingHit)
+		if (TraceHitResult.ImpactPoint.IsZero())
 		{
 			TraceHitResult.ImpactPoint = End;
 		}
@@ -286,8 +287,6 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 		}
 	}
 }
-
-
 
 // 클라 실행
 void UCombatComponent::OnRep_EquippedWeapon()

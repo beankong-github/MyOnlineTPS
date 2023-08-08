@@ -77,7 +77,10 @@ private:
 	UPROPERTY(EditAnywhere, category = Combat)
 	class UAnimMontage* FireWeaponMontage;
 
-	UPROPERTY(EidtAnywhere)
+	UPROPERTY(EditAnywhere, category = Combat)
+	class UAnimMontage* HitReactMontage;
+
+	UPROPERTY(EditAnywhere)
 	float CameraThreshold = 200.f;
 
 public:	
@@ -102,9 +105,12 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerEquip();
 
-	/** Functions **/
-	void PlayFireMontage(bool bAiming);
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_Hit();
 
+	/** Play Montage **/
+	void PlayFireMontage(bool bAiming);
+	void PlayHitReactMontage();
 protected:	
 	/** Overridings **/
 	virtual void BeginPlay() override;
